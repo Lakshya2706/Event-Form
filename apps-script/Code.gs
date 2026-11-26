@@ -56,6 +56,7 @@ function submit(data) {
       clean_(data.event),
       'New', '', ''
     ]]);
+    sheet.getRange(row, 1).setNumberFormat('dd mmm yyyy, hh:mm');   // keep date and time visible
     return { ok: true };
   } finally {
     lock.releaseLock();
