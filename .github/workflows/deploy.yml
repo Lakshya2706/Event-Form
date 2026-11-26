@@ -1,0 +1,41 @@
+name: Deploy form to server
+
+# Runs when a push to main changes the website files, or manually from the Actions tab.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-event-form
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Upload web/ to event.blissnowlife.com
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: ./web/
+          server-dir: ./
+          dangerous-clean-slate: false
+
+      - name: Check the live page
+        run: |
+          sleep 5
+          if curl -fsSL --max-time 30 http://event.blissnowlife.com/ | grep -q "Welcome to your wellness journey"; then
+            echo "Live page is up and shows the form."
+          else
+            echo "::error::The live page did not show the form after deploying."
+            exit 1
+          fi
