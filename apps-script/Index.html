@@ -117,6 +117,7 @@ footer{text-align:center;font-size:13px;color:#9a9a9a;margin-top:22px}
         </label>
       </div>
 
+      <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Leave this empty <input type="text" id="website" name="website" tabindex="-1" autocomplete="off"></label></div>
       <button type="submit" id="go" disabled>Start your wellness experience</button>
       <p class="fail" id="fail">Something went wrong sending your details. Please try again.</p>
       <p class="note">Your details are shared only with the Bliss Now team.</p>
@@ -144,8 +145,10 @@ document.getElementById('interests').innerHTML=AREAS.map((a,i)=>`<label class="t
 
 const form=document.getElementById('reg'),go=document.getElementById('go'),app=document.getElementById('app');
 const nameEl=document.getElementById('name'),phoneEl=document.getElementById('phone');
+// Google Apps Script web app that writes each registration to the Google Sheet.
+const ENDPOINT='https://script.google.com/macros/s/AKfycbxmqsw2KUehFRMu8phlLsXjhEVj7Y_ffZKQpNnv53bk-3jvhKyAw5mlraCFMQilAEsLIA/exec';
 const live=typeof google!=='undefined'&&google.script&&google.script.run;
-if(!live)document.getElementById('preview').style.display='block';
+if(!live&&!ENDPOINT)document.getElementById('preview').style.display='block';
 
 const digits=v=>v.replace(/\D/g,'');
 const okName=()=>nameEl.value.trim().length>=2;
@@ -171,10 +174,15 @@ form.addEventListener('submit',e=>{
     interests:[...form.querySelectorAll('input[name=interest]:checked')].map(x=>x.value).join(', '),
     insurance:document.getElementById('insurance').value.trim(),
     consent:document.getElementById('consent').checked?'Yes':'No',
-    event:'Wellness & Recovery Experience · 28 Nov 2026'
+    event:'Wellness & Recovery Experience · 28 Nov 2026',
+    website:document.getElementById('website').value
   };
   go.disabled=true;go.textContent='Sending…';document.getElementById('fail').style.display='none';
   if(live){google.script.run.withSuccessHandler(()=>finish(data.name)).withFailureHandler(fail).submit(data)}
+  else if(ENDPOINT){
+    fetch(ENDPOINT,{method:'POST',body:JSON.stringify(data)})
+      .then(r=>r.json()).then(j=>j&&j.ok?finish(data.name):fail()).catch(fail);
+  }
   else setTimeout(()=>finish(data.name),600);
 });
 

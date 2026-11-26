@@ -1,12 +1,12 @@
 /**
  * Bliss Now — Event registration form → Google Sheet
  *
- * Open the "Bliss Now – Event Registrations" Sheet → Extensions → Apps Script.
- * Paste this into Code.gs, and add an HTML file named "Index" with the contents of Index.html.
- * Then Deploy → New deployment → Web app (Execute as: Me, Who has access: Anyone).
+ * Two ways in, same Sheet:
+ *  - doGet():  serves the form at the Google web-app link (Index.html)
+ *  - doPost(): receives submissions from the form hosted on the company domain (web/index.html)
  *
- * The Sheet is already set up: headers, status dropdown, colours, the WhatsApp
- * "Chat" link column (L) and the Summary tab. This script only adds rows.
+ * After changing this file: Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy.
+ * The /exec link stays the same.
  */
 
 const SHEET_ID = '1cR1uMJEZVPpOTwE6hRO64WK4G5EQpt-mfEz6CegMiqg';
@@ -20,8 +20,26 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-/** Called by the form. Adds one row per registration (columns A–K; L fills itself). */
+/** Receives a submission from the form on the company website. */
+function doPost(e) {
+  let result;
+  try {
+    const data = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    result = submit(data);
+  } catch (err) {
+    result = { ok: false };
+  }
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/** Adds one row per registration (columns A–K; column L fills itself). */
 function submit(data) {
+  data = data || {};
+  if (data.website) return { ok: true };                      // spam trap: bots fill hidden fields
+  if (!data.name || String(data.name).trim().length < 2) return { ok: false };
+  if (String(data.phone || '').replace(/\D/g, '').length < 8) return { ok: false };
+
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
